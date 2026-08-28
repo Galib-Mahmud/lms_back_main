@@ -1,0 +1,32 @@
+{
+  "name": "lms-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LMS Platform - Strapi Backend (Courses, Lessons, Quizzes, Enrollment, Progress, Blog)",
+  "scripts": {
+    "build": "strapi build",
+    "deploy": "strapi deploy",
+    "develop": "strapi develop",
+    "start": "strapi start",
+    "strapi": "strapi",
+    "seed": "node scripts/seed.js"
+  },
+  "dependencies": {
+    "@strapi/plugin-cloud": "5.11.0",
+    "@strapi/plugin-users-permissions": "5.11.0",
+    "@strapi/strapi": "5.11.0",
+    "better-sqlite3": "11.3.0",
+    "pg": "8.13.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.26.2",
+    "styled-components": "6.1.13"
+  },
+  "engines": {
+    "node": ">=18.0.0 <=22.x.x",
+    "npm": ">=6.0.0"
+  },
+  "strapi": {
+    "uuid": "lms-backend-uuid"
+  }
+}

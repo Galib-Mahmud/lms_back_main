@@ -1,0 +1,25 @@
+{
+  "collectionName": "components_quiz_questions",
+  "info": {
+    "displayName": "Question",
+    "description": "A single multiple-choice question"
+  },
+  "options": {},
+  "attributes": {
+    "questionText": {
+      "type": "string",
+      "required": true
+    },
+    "options": {
+      "type": "json",
+      "required": true,
+      "description": "Array of option strings, e.g. [\"Paris\", \"London\", \"Rome\", \"Berlin\"]"
+    },
+    "correctOptionIndex": {
+      "type": "integer",
+      "required": true,
+      "min": 0,
+      "description": "Zero-based index into the options array that is correct. Never exposed to students by the public API."
+    }
+  }
+}
