@@ -137,6 +137,7 @@ const PERMISSIONS_BY_ROLE = {
     'api::lesson.lesson.find',
     'api::lesson.lesson.findOne',
     'api::lesson.lesson.complete',
+    'api::quiz.quiz.find',
     'api::quiz.quiz.findOne',
     'api::quiz.quiz.submit',
     'api::enrollment.enrollment.find',
