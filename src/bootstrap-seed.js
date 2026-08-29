@@ -5,33 +5,17 @@ module.exports = async (strapi) => {
     const courseDoc = strapi.documents('api::course.course');
     const lessonDoc = strapi.documents('api::lesson.lesson');
     const quizDoc = strapi.documents('api::quiz.quiz');
-    const blogDoc = strapi.documents('api::blog-post.blog-post');
-    const enrollDoc = strapi.documents('api::enrollment.enrollment');
-    const progressDoc = strapi.documents('api::lesson-progress.lesson-progress');
 
-    // Clean up old invalid seed courses if present
-    const existingCourses = await courseDoc.findMany({});
-    if (existingCourses && existingCourses.length > 0) {
-      for (const c of existingCourses) {
-        await courseDoc.delete({ documentId: c.documentId });
-      }
-    }
+    strapi.log.info('[seed] Cleaning up existing demo courses, lessons, and quizzes...');
 
-    const existingLessons = await lessonDoc.findMany({});
-    if (existingLessons && existingLessons.length > 0) {
-      for (const l of existingLessons) {
-        await lessonDoc.delete({ documentId: l.documentId });
-      }
-    }
+    // Wipe previous demo data cleanly from database
+    await strapi.db.query('api::lesson-progress.lesson-progress').deleteMany({});
+    await strapi.db.query('api::enrollment.enrollment').deleteMany({});
+    await strapi.db.query('api::quiz.quiz').deleteMany({});
+    await strapi.db.query('api::lesson.lesson').deleteMany({});
+    await strapi.db.query('api::course.course').deleteMany({});
 
-    const existingQuizzes = await quizDoc.findMany({});
-    if (existingQuizzes && existingQuizzes.length > 0) {
-      for (const q of existingQuizzes) {
-        await quizDoc.delete({ documentId: q.documentId });
-      }
-    }
-
-    strapi.log.info('[seed] Creating fresh Strapi 5 LMS demo data with documentId relations...');
+    strapi.log.info('[seed] Creating fresh Strapi 5 LMS demo data...');
 
     const adminUser = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { email: 'admin@example.com' } });
     const managerUser = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { email: 'content@example.com' } });
@@ -262,8 +246,8 @@ Key Highlights:
     // Create Student Enrollment & Progress for Course 1
     await enrollDoc.create({
       data: {
-        user: studentUser.id,
-        course: course1.id,
+        user: studentUser.documentId,
+        course: course1.documentId,
         enrolledAt: new Date(),
       },
       status: 'published',
@@ -271,9 +255,9 @@ Key Highlights:
 
     await progressDoc.create({
       data: {
-        user: studentUser.id,
-        lesson: c1Lesson1.id,
-        course: course1.id,
+        user: studentUser.documentId,
+        lesson: c1Lesson1.documentId,
+        course: course1.documentId,
         completed: true,
         completedAt: new Date(),
       },
@@ -282,9 +266,9 @@ Key Highlights:
 
     await progressDoc.create({
       data: {
-        user: studentUser.id,
-        lesson: c1Lesson2.id,
-        course: course1.id,
+        user: studentUser.documentId,
+        lesson: c1Lesson2.documentId,
+        course: course1.documentId,
         completed: true,
         completedAt: new Date(),
       },
