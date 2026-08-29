@@ -5,17 +5,21 @@ module.exports = async (strapi) => {
     const courseDoc = strapi.documents('api::course.course');
     const lessonDoc = strapi.documents('api::lesson.lesson');
     const quizDoc = strapi.documents('api::quiz.quiz');
+    const blogDoc = strapi.documents('api::blog-post.blog-post');
+    const enrollDoc = strapi.documents('api::enrollment.enrollment');
+    const progressDoc = strapi.documents('api::lesson-progress.lesson-progress');
 
-    strapi.log.info('[seed] Cleaning up existing demo courses, lessons, and quizzes...');
+    strapi.log.info('[seed] Performing complete database wipe for demo entities...');
 
-    // Wipe previous demo data cleanly from database
-    await strapi.db.query('api::lesson-progress.lesson-progress').deleteMany({});
-    await strapi.db.query('api::enrollment.enrollment').deleteMany({});
-    await strapi.db.query('api::quiz.quiz').deleteMany({});
-    await strapi.db.query('api::lesson.lesson').deleteMany({});
-    await strapi.db.query('api::course.course').deleteMany({});
+    // Wipe previous demo data cleanly from database with mandatory { where: {} }
+    await strapi.db.query('api::lesson-progress.lesson-progress').deleteMany({ where: {} });
+    await strapi.db.query('api::enrollment.enrollment').deleteMany({ where: {} });
+    await strapi.db.query('api::quiz-result.quiz-result').deleteMany({ where: {} });
+    await strapi.db.query('api::quiz.quiz').deleteMany({ where: {} });
+    await strapi.db.query('api::lesson.lesson').deleteMany({ where: {} });
+    await strapi.db.query('api::course.course').deleteMany({ where: {} });
 
-    strapi.log.info('[seed] Creating fresh Strapi 5 LMS demo data...');
+    strapi.log.info('[seed] Creating fresh Strapi 5 LMS demo data with documentId relations...');
 
     const adminUser = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { email: 'admin@example.com' } });
     const managerUser = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { email: 'content@example.com' } });
@@ -242,6 +246,48 @@ Key Highlights:
       },
       status: 'published',
     });
+
+    // Seed Demo Blog Posts (if not present)
+    const existingBlogs = await blogDoc.findMany({});
+    if (!existingBlogs || existingBlogs.length === 0) {
+      await blogDoc.create({
+        data: {
+          title: 'The Architecture of Modern LMS Platforms in 2026',
+          slug: 'architecture-of-modern-lms-2026',
+          body: `Education technology is shifting toward provable progress tracking and active evaluation. Rather than passive video watching, modern LMS applications combine auto-graded quizzes, interactive sequence viewing, and role-based instructor control to ensure students stay engaged.`,
+          coverImageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
+          status: 'published',
+          publishedDate: new Date().toISOString(),
+          author: managerUser.documentId,
+        },
+        status: 'published',
+      });
+
+      await blogDoc.create({
+        data: {
+          title: 'Mastering Visual Polish: Design Systems That Delight Users',
+          slug: 'mastering-visual-polish-design-systems',
+          body: `Great user interfaces feel alive and responsive. By layering custom HSL color tokens, micro-interactions, subtle drop shadows, and responsive layout grids, we transform standard web apps into memorable software experiences.`,
+          coverImageUrl: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=800&auto=format&fit=crop&q=80',
+          status: 'published',
+          publishedDate: new Date().toISOString(),
+          author: adminUser.documentId,
+        },
+        status: 'published',
+      });
+
+      await blogDoc.create({
+        data: {
+          title: 'Platform Q3 Feature Roadmap & Upcoming Modules (Draft)',
+          slug: 'platform-q3-feature-roadmap',
+          body: `We are preparing exciting updates including live video streaming support, peer code reviews, certificate generation upon 100% course completion, and advanced analytics dashboards for instructors.`,
+          coverImageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80',
+          status: 'draft',
+          author: managerUser.documentId,
+        },
+        status: 'published',
+      });
+    }
 
     // Create Student Enrollment & Progress for Course 1
     await enrollDoc.create({
