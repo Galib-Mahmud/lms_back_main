@@ -1,11 +1,9 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { isStudent, canManageAllCourses, canManageCourse } = require('../../../utils/access');
+const { isStudent, canManageAllCourses } = require('../../../utils/access');
 
 module.exports = createCoreController('api::enrollment.enrollment', ({ strapi }) => ({
-  // Direct creation is only used as a fallback; the primary enrollment flow is
-  // POST /api/courses/:id/enroll on the course controller.
   async create(ctx) {
     const user = ctx.state.user;
     if (!user) return ctx.unauthorized('You must be logged in.');
@@ -22,24 +20,28 @@ module.exports = createCoreController('api::enrollment.enrollment', ({ strapi })
     const user = ctx.state.user;
     if (!user) return ctx.unauthorized('You must be logged in.');
 
+    let enrollments = [];
     if (isStudent(user)) {
-      ctx.query.filters = { ...(ctx.query.filters || {}), user: user.id };
-      return super.find(ctx);
+      enrollments = await strapi.db.query('api::enrollment.enrollment').findMany({
+        where: { user: user.id },
+        populate: ['course'],
+      });
+    } else if (canManageAllCourses(user)) {
+      enrollments = await strapi.db.query('api::enrollment.enrollment').findMany({
+        populate: ['course', 'user'],
+      });
+    } else {
+      const ownedCourses = await strapi.db.query('api::course.course').findMany({
+        where: { owner: user.id },
+        select: ['id'],
+      });
+      const ownedIds = ownedCourses.map((c) => c.id);
+      enrollments = await strapi.db.query('api::enrollment.enrollment').findMany({
+        where: { course: { id: { $in: ownedIds } } },
+        populate: ['course', 'user'],
+      });
     }
 
-    if (canManageAllCourses(user)) {
-      return super.find(ctx);
-    }
-
-    // Instructor: only enrollments for courses they own.
-    const ownedCourses = await strapi.db.query('api::course.course').findMany({
-      where: { owner: user.id },
-      select: ['id'],
-    });
-    ctx.query.filters = {
-      ...(ctx.query.filters || {}),
-      course: { id: { $in: ownedCourses.map((c) => c.id) } },
-    };
-    return super.find(ctx);
+    return { data: enrollments };
   },
 }));
