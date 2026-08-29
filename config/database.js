@@ -11,10 +11,13 @@ module.exports = ({ env }) => {
   const dbUser = env('DATABASE_USERNAME') || env('PGUSER') || env('POSTGRES_USER') || 'strapi';
   const dbPass = env('DATABASE_PASSWORD') || env('PGPASSWORD') || env('POSTGRES_PASSWORD') || '';
 
+  // Determine SSL configuration safely
+  const useSsl = env.bool('DATABASE_SSL', false);
+
   const postgresConnection = dbUrl
     ? {
         connectionString: dbUrl,
-        ssl: env.bool('DATABASE_SSL', true) ? { rejectUnauthorized: false } : false,
+        ssl: useSsl ? { rejectUnauthorized: false } : false,
       }
     : {
         host: dbHost,
@@ -22,7 +25,7 @@ module.exports = ({ env }) => {
         database: dbName,
         user: dbUser,
         password: dbPass,
-        ssl: env.bool('DATABASE_SSL', false) ? { rejectUnauthorized: false } : false,
+        ssl: useSsl ? { rejectUnauthorized: false } : false,
         schema: env('DATABASE_SCHEMA', 'public'),
       };
 
