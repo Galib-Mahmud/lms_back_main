@@ -20,14 +20,24 @@ module.exports = createCoreController('api::enrollment.enrollment', ({ strapi })
     const user = ctx.state.user;
     if (!user) return ctx.unauthorized('You must be logged in.');
 
+    const { filters } = ctx.query || {};
+    let filterCourseId = null;
+    if (filters && filters.course && filters.course.id) {
+      filterCourseId = Number(filters.course.id);
+    }
+
     let enrollments = [];
     if (isStudent(user)) {
+      const whereClause = { user: user.id };
+      if (filterCourseId) whereClause.course = filterCourseId;
       enrollments = await strapi.db.query('api::enrollment.enrollment').findMany({
-        where: { user: user.id },
+        where: whereClause,
         populate: ['course'],
       });
     } else if (canManageAllCourses(user)) {
+      const whereClause = filterCourseId ? { course: filterCourseId } : {};
       enrollments = await strapi.db.query('api::enrollment.enrollment').findMany({
+        where: whereClause,
         populate: ['course', 'user'],
       });
     } else {
@@ -36,8 +46,12 @@ module.exports = createCoreController('api::enrollment.enrollment', ({ strapi })
         select: ['id'],
       });
       const ownedIds = ownedCourses.map((c) => c.id);
+      let targetCourseIds = ownedIds;
+      if (filterCourseId) {
+        targetCourseIds = ownedIds.includes(filterCourseId) ? [filterCourseId] : [];
+      }
       enrollments = await strapi.db.query('api::enrollment.enrollment').findMany({
-        where: { course: { id: { $in: ownedIds } } },
+        where: { course: { id: { $in: targetCourseIds } } },
         populate: ['course', 'user'],
       });
     }
