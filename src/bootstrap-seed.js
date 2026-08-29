@@ -1,99 +1,47 @@
 'use strict';
 
-const bcrypt = require('bcryptjs');
-
-async function hashPassword(password) {
-  return bcrypt.hash(password, 10);
-}
-
-module.exports = async function seedDemoData({ strapi }) {
+module.exports = async (strapi) => {
   try {
-    const existingCoursesCount = await strapi.db.query('api::course.course').count();
-    if (existingCoursesCount >= 3) {
-      strapi.log.info('[seed] Demo courses already exist (3+). Skipping seed.');
-      return;
-    }
-
-    strapi.log.info('[seed] Seeding demo users, courses, lessons, quizzes, and blog posts...');
-
-    // Fetch Roles
-    const rolesList = await strapi.db.query('plugin::users-permissions.role').findMany();
-    const roleMap = {};
-    for (const r of rolesList) {
-      roleMap[r.type] = r;
-    }
-
-    if (!roleMap.admin || !roleMap.instructor || !roleMap.student || !roleMap.content_manager) {
-      strapi.log.error('[seed] Required roles missing. Ensure bootstrap-roles ran first.');
-      return;
-    }
-
-    // Helper to get or create user
-    async function getOrCreateUser(userData) {
-      let u = await strapi.db.query('plugin::users-permissions.user').findOne({
-        where: { email: userData.email.toLowerCase() },
-      });
-
-      if (!u) {
-        const hashedPassword = await hashPassword(userData.password);
-        const roleId = Number(roleMap[userData.roleType].id);
-        u = await strapi.db.query('plugin::users-permissions.user').create({
-          data: {
-            username: userData.username,
-            email: userData.email.toLowerCase(),
-            password: hashedPassword,
-            fullName: userData.fullName,
-            provider: 'local',
-            confirmed: true,
-            blocked: false,
-            role: roleId,
-          },
-        });
-        strapi.log.info(`[seed] Created demo user: ${userData.email} (${userData.roleType})`);
-      }
-      return u;
-    }
-
-    // Create Demo Users
-    const adminUser = await getOrCreateUser({
-      username: 'admin',
-      email: 'admin@example.com',
-      fullName: 'System Admin',
-      password: 'Admin123456!',
-      roleType: 'admin',
-    });
-
-    const managerUser = await getOrCreateUser({
-      username: 'content_manager',
-      email: 'content@example.com',
-      fullName: 'Sarah Content Lead',
-      password: 'Content123456!',
-      roleType: 'content_manager',
-    });
-
-    const instructorUser = await getOrCreateUser({
-      username: 'instructor',
-      email: 'instructor@example.com',
-      fullName: 'Dr. Alex Mercer',
-      password: 'Instructor123456!',
-      roleType: 'instructor',
-    });
-
-    const studentUser = await getOrCreateUser({
-      username: 'student',
-      email: 'student@example.com',
-      fullName: 'Jordan Lee',
-      password: 'Student123456!',
-      roleType: 'student',
-    });
-
-    // Use documents service or entityService for content types in Strapi 5
     const courseDoc = strapi.documents('api::course.course');
     const lessonDoc = strapi.documents('api::lesson.lesson');
     const quizDoc = strapi.documents('api::quiz.quiz');
     const blogDoc = strapi.documents('api::blog-post.blog-post');
     const enrollDoc = strapi.documents('api::enrollment.enrollment');
     const progressDoc = strapi.documents('api::lesson-progress.lesson-progress');
+
+    // Clean up old invalid seed courses if present
+    const existingCourses = await courseDoc.findMany({});
+    if (existingCourses && existingCourses.length > 0) {
+      for (const c of existingCourses) {
+        await courseDoc.delete({ documentId: c.documentId });
+      }
+    }
+
+    const existingLessons = await lessonDoc.findMany({});
+    if (existingLessons && existingLessons.length > 0) {
+      for (const l of existingLessons) {
+        await lessonDoc.delete({ documentId: l.documentId });
+      }
+    }
+
+    const existingQuizzes = await quizDoc.findMany({});
+    if (existingQuizzes && existingQuizzes.length > 0) {
+      for (const q of existingQuizzes) {
+        await quizDoc.delete({ documentId: q.documentId });
+      }
+    }
+
+    strapi.log.info('[seed] Creating fresh Strapi 5 LMS demo data with documentId relations...');
+
+    const adminUser = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { email: 'admin@example.com' } });
+    const managerUser = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { email: 'content@example.com' } });
+    const instructorUser = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { email: 'instructor@example.com' } });
+    const studentUser = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { email: 'student@example.com' } });
+
+    if (!instructorUser || !adminUser || !studentUser) {
+      strapi.log.warn('[seed] Users not found yet, skipping course seeding.');
+      return;
+    }
 
     // 1. Course 1: Full-Stack Web Architecture
     const course1 = await courseDoc.create({
@@ -102,7 +50,7 @@ module.exports = async function seedDemoData({ strapi }) {
         slug: 'fullstack-web-architecture',
         description: 'Master modern web development from database design to server-side rendering. Learn Strapi 5 REST API integration, Next.js App Router, role-based access control, and cloud deployment.',
         coverImageUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format&fit=crop&q=80',
-        owner: instructorUser.id,
+        owner: instructorUser.documentId,
       },
       status: 'published',
     });
@@ -119,7 +67,7 @@ Key Highlights:
 - Server-side rendering (SSR) & Static Site Generation (SSG)
 - Stateless authentication with JWT`,
         videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-        course: course1.id,
+        course: course1.documentId,
       },
       status: 'published',
     });
@@ -135,7 +83,7 @@ Key Highlights:
 - DocumentID vs numeric database IDs
 - Role-based route guards at controller level`,
         videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-        course: course1.id,
+        course: course1.documentId,
       },
       status: 'published',
     });
@@ -146,7 +94,7 @@ Key Highlights:
         order: 3,
         content: `Build visually stunning user interfaces using modern CSS token systems, custom color scales, smooth micro-animations, and responsive layout containers.`,
         videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-        course: course1.id,
+        course: course1.documentId,
       },
       status: 'published',
     });
@@ -157,7 +105,7 @@ Key Highlights:
         order: 4,
         content: `Build an automated quiz grading system that calculates student percentages in real-time, persists completion progress, and prevents unauthorized access to answers.`,
         videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-        course: course1.id,
+        course: course1.documentId,
       },
       status: 'published',
     });
@@ -165,7 +113,7 @@ Key Highlights:
     await quizDoc.create({
       data: {
         title: 'Full-Stack Mastery Assessment',
-        course: course1.id,
+        course: course1.documentId,
         questions: [
           {
             questionText: 'What is the primary purpose of a Headless CMS like Strapi?',
@@ -209,7 +157,7 @@ Key Highlights:
         slug: 'ui-ux-design-systems',
         description: 'Craft stunning user interfaces with custom color systems, typography scale, micro-animations, glassmorphism, and responsive layouts that wow users at first glance.',
         coverImageUrl: 'https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?w=800&auto=format&fit=crop&q=80',
-        owner: instructorUser.id,
+        owner: instructorUser.documentId,
       },
       status: 'published',
     });
@@ -219,7 +167,7 @@ Key Highlights:
         title: '01. The Science of Color Systems & Contrast',
         order: 1,
         content: `Explore color psychology, accessible contrast ratios, CSS custom properties, and dark mode tokens. Learn why avoiding raw browser defaults elevates visual design.`,
-        course: course2.id,
+        course: course2.documentId,
       },
       status: 'published',
     });
@@ -229,7 +177,7 @@ Key Highlights:
         title: '02. Typography Scale & Visual Hierarchy',
         order: 2,
         content: `Pair display serif fonts with clean sans-serif body text and monospace metadata. Establish clear visual hierarchy using font scale, weight, and line-height.`,
-        course: course2.id,
+        course: course2.documentId,
       },
       status: 'published',
     });
@@ -239,7 +187,7 @@ Key Highlights:
         title: '03. Micro-Animations & Responsive Design',
         order: 3,
         content: `Add interactive hover states, glassmorphism backdrop blurs, animated completion stamps, and skeleton loaders to provide delightful feedback to users.`,
-        course: course2.id,
+        course: course2.documentId,
       },
       status: 'published',
     });
@@ -247,7 +195,7 @@ Key Highlights:
     await quizDoc.create({
       data: {
         title: 'UI/UX Design Systems Quiz',
-        course: course2.id,
+        course: course2.documentId,
         questions: [
           {
             questionText: 'Why is visual hierarchy critical in modern user interface design?',
@@ -271,7 +219,7 @@ Key Highlights:
         slug: 'applied-python-data-science',
         description: 'From data wrangling with Pandas to training machine learning models. Learn data visualization, statistical hypothesis testing, and neural network foundations.',
         coverImageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
-        owner: managerUser.id,
+        owner: managerUser.documentId,
       },
       status: 'published',
     });
@@ -281,7 +229,7 @@ Key Highlights:
         title: '01. Exploratory Data Analysis with Pandas & Seaborn',
         order: 1,
         content: `Master data cleaning, handling missing values, calculating summary statistics, and generating statistical charts in Python.`,
-        course: course3.id,
+        course: course3.documentId,
       },
       status: 'published',
     });
@@ -291,7 +239,7 @@ Key Highlights:
         title: '02. Supervised Machine Learning Models',
         order: 2,
         content: `Train decision trees, logistic regression, and random forests using Scikit-Learn. Evaluate model performance with confusion matrices and F1 scores.`,
-        course: course3.id,
+        course: course3.documentId,
       },
       status: 'published',
     });
@@ -299,7 +247,7 @@ Key Highlights:
     await quizDoc.create({
       data: {
         title: 'Data Science Fundamentals Quiz',
-        course: course3.id,
+        course: course3.documentId,
         questions: [
           {
             questionText: 'Which Python library is widely used for tabular data manipulation?',
@@ -307,49 +255,6 @@ Key Highlights:
             correctOptionIndex: 1,
           },
         ],
-      },
-      status: 'published',
-    });
-
-    // Create Demo Blog Posts
-    await blogDoc.create({
-      data: {
-        title: 'The Architecture of Modern LMS Platforms in 2026',
-        slug: 'architecture-of-modern-lms-2026',
-        body: `Education technology is shifting toward provable progress tracking and active evaluation. Rather than passive video watching, modern LMS applications combine auto-graded quizzes, interactive sequence viewing, and role-based instructor control to ensure students stay engaged.
-
-By decoupling the backend REST API (built with Strapi 5) from a high-performance Next.js 15 client, platforms can scale seamlessly while providing instant feedback to students and detailed analytics to instructors.`,
-        coverImageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
-        status: 'published',
-        publishedDate: new Date().toISOString(),
-        author: managerUser.id,
-      },
-      status: 'published',
-    });
-
-    await blogDoc.create({
-      data: {
-        title: 'Mastering Visual Polish: Design Systems That Delight Users',
-        slug: 'mastering-visual-polish-design-systems',
-        body: `Great user interfaces feel alive and responsive. By layering custom HSL color tokens, micro-interactions, subtle drop shadows, and responsive layout grids, we transform standard web apps into memorable software experiences.
-
-Visual polish isn't just cosmetic — it improves usability, reduces cognitive load, and builds trust with your audience.`,
-        coverImageUrl: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?w=800&auto=format&fit=crop&q=80',
-        status: 'published',
-        publishedDate: new Date().toISOString(),
-        author: adminUser.id,
-      },
-      status: 'published',
-    });
-
-    await blogDoc.create({
-      data: {
-        title: 'Platform Q3 Feature Roadmap & Upcoming Modules (Draft)',
-        slug: 'platform-q3-feature-roadmap',
-        body: `We are preparing exciting updates including live video streaming support, peer code reviews, certificate generation upon 100% course completion, and advanced analytics dashboards for instructors.`,
-        coverImageUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&auto=format&fit=crop&q=80',
-        status: 'draft',
-        author: managerUser.id,
       },
       status: 'published',
     });
@@ -386,7 +291,7 @@ Visual polish isn't just cosmetic — it improves usability, reduces cognitive l
       status: 'published',
     });
 
-    strapi.log.info('[seed] Demo data seeded successfully!');
+    strapi.log.info('[seed] Fresh Strapi 5 demo courses, lessons, and quizzes seeded successfully!');
   } catch (err) {
     console.error('[seed] ERROR DETAILS:', err);
   }
