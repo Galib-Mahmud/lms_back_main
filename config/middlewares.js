@@ -18,17 +18,24 @@ module.exports = [
   {
     name: 'strapi::cors',
     config: {
-      origin: process.env.CORS_ORIGINS
-        ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim())
-        : [
-            'https://lms-front-main.vercel.app',
-            'http://localhost:3000',
-            'http://localhost:3001',
-            'http://localhost:3002',
-            'http://127.0.0.1:3000',
-            'http://127.0.0.1:3001',
-            '*',
-          ],
+      origin: (ctx) => {
+        const reqOrigin = ctx.request.header.origin;
+        if (!reqOrigin) return '*';
+        if (
+          reqOrigin.includes('vercel.app') ||
+          reqOrigin.includes('localhost') ||
+          reqOrigin.includes('127.0.0.1')
+        ) {
+          return reqOrigin;
+        }
+        if (process.env.CORS_ORIGINS) {
+          const allowed = process.env.CORS_ORIGINS.split(',').map((s) =>
+            s.trim().replace(/^["']|["']$/g, '').replace(/\/$/, '')
+          );
+          if (allowed.includes(reqOrigin.replace(/\/$/, ''))) return reqOrigin;
+        }
+        return reqOrigin;
+      },
       headers: ['Content-Type', 'Authorization', 'Origin', 'Accept'],
       credentials: true,
     },
