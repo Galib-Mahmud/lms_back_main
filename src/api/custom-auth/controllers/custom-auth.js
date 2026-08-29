@@ -5,41 +5,6 @@ const bcrypt = require('bcryptjs');
 const SELF_SERVICE_ROLES = ['student', 'instructor'];
 
 module.exports = {
-  // GET /api/custom-auth/me
-  async me(ctx) {
-    try {
-      const authHeader = ctx.request.header.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return ctx.unauthorized('No authorization header provided.');
-      }
-      const token = authHeader.substring(7);
-      const payload = await strapi.plugin('users-permissions').service('jwt').verify(token);
-      if (!payload || !payload.id) {
-        return ctx.unauthorized('Invalid token.');
-      }
-
-      const user = await strapi.db.query('plugin::users-permissions.user').findOne({
-        where: { id: payload.id },
-        populate: ['role'],
-      });
-
-      if (!user) return ctx.notFound('User not found.');
-
-      ctx.body = {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        fullName: user.fullName || user.username,
-        role: {
-          type: user.role?.type || 'student',
-          name: user.role?.name || 'Student',
-        },
-      };
-    } catch (err) {
-      return ctx.unauthorized('Invalid or expired token.');
-    }
-  },
-
   // POST /api/custom-auth/register
   // Body: { username, email, password, fullName?, roleType?: 'student' | 'instructor' }
   async register(ctx) {
