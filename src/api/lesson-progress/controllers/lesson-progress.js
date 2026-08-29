@@ -8,14 +8,24 @@ module.exports = createCoreController('api::lesson-progress.lesson-progress', ({
     const user = ctx.state.user;
     if (!user) return ctx.unauthorized('You must be logged in.');
 
+    const { filters } = ctx.query || {};
+    let filterLessonId = null;
+    if (filters && filters.lesson && filters.lesson.id) {
+      filterLessonId = Number(filters.lesson.id);
+    }
+
     let records = [];
     if (isStudent(user)) {
+      const whereClause = { user: user.id };
+      if (filterLessonId) whereClause.lesson = filterLessonId;
       records = await strapi.db.query('api::lesson-progress.lesson-progress').findMany({
-        where: { user: user.id },
+        where: whereClause,
         populate: ['lesson', 'course'],
       });
     } else if (canManageAllCourses(user)) {
+      const whereClause = filterLessonId ? { lesson: filterLessonId } : {};
       records = await strapi.db.query('api::lesson-progress.lesson-progress').findMany({
+        where: whereClause,
         populate: ['lesson', 'course', 'user'],
       });
     } else {
@@ -24,8 +34,10 @@ module.exports = createCoreController('api::lesson-progress.lesson-progress', ({
         select: ['id'],
       });
       const ownedIds = ownedCourses.map((c) => c.id);
+      const whereClause = { course: { id: { $in: ownedIds } } };
+      if (filterLessonId) whereClause.lesson = filterLessonId;
       records = await strapi.db.query('api::lesson-progress.lesson-progress').findMany({
-        where: { course: { id: { $in: ownedIds } } },
+        where: whereClause,
         populate: ['lesson', 'course', 'user'],
       });
     }
