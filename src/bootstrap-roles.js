@@ -34,6 +34,7 @@ const ROLE_DEFINITIONS = [
 const PERMISSIONS_BY_ROLE = {
   public: [
     'api::custom-auth.custom-auth.register',
+    'api::custom-auth.custom-auth.me',
     'plugin::users-permissions.auth.login',
     'plugin::users-permissions.auth.forgotPassword',
     'plugin::users-permissions.auth.resetPassword',
@@ -44,6 +45,7 @@ const PERMISSIONS_BY_ROLE = {
   ],
   admin: [
     'plugin::users-permissions.user.me',
+    'api::custom-auth.custom-auth.me',
     'api::course.course.find',
     'api::course.course.findOne',
     'api::course.course.create',
@@ -78,6 +80,7 @@ const PERMISSIONS_BY_ROLE = {
   ],
   content_manager: [
     'plugin::users-permissions.user.me',
+    'api::custom-auth.custom-auth.me',
     'api::course.course.find',
     'api::course.course.findOne',
     'api::course.course.create',
@@ -105,6 +108,7 @@ const PERMISSIONS_BY_ROLE = {
   ],
   instructor: [
     'plugin::users-permissions.user.me',
+    'api::custom-auth.custom-auth.me',
     'api::course.course.find',
     'api::course.course.findOne',
     'api::course.course.create',
@@ -130,6 +134,7 @@ const PERMISSIONS_BY_ROLE = {
   ],
   student: [
     'plugin::users-permissions.user.me',
+    'api::custom-auth.custom-auth.me',
     'api::course.course.find',
     'api::course.course.findOne',
     'api::course.course.enroll',
@@ -150,8 +155,6 @@ const PERMISSIONS_BY_ROLE = {
 };
 
 const actionToPluginController = (action) => {
-  // e.g. 'plugin::users-permissions.auth.register' -> { uid: 'plugin::users-permissions', controller: 'auth', action: 'register' }
-  // e.g. 'api::course.course.find' -> { uid: 'api::course.course', controller: 'course', action: 'find' }
   const parts = action.split('.');
   const actionName = parts.pop();
   const controllerName = parts.pop();
@@ -185,8 +188,6 @@ async function ensureRoles(strapi) {
 
 async function setPermissionsForRole(strapi, role, actions) {
   for (const action of actions) {
-    const { uid, controllerName, actionName } = actionToPluginController(action);
-
     const existing = await strapi.db.query('plugin::users-permissions.permission').findOne({
       where: { role: role.id, action },
     });
