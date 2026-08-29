@@ -179,6 +179,7 @@ const sanitizeQuiz = (quiz) => {
   return clone;
 };
 
+module.exports = createCoreController('api::quiz.quiz', ({ strapi }) => ({
   async find(ctx) {
     const user = ctx.state.user;
     if (!user) return ctx.unauthorized('You must be logged in.');
