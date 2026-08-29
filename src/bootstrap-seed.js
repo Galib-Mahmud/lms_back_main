@@ -15,6 +15,7 @@ module.exports = async (strapi) => {
     }
 
     const courseDoc = strapi.documents('api::course.course');
+    const lessonDoc = strapi.documents('api::lesson.lesson');
     const quizDoc = strapi.documents('api::quiz.quiz');
 
     // Ensure 3 Core Courses Exist
@@ -26,7 +27,7 @@ module.exports = async (strapi) => {
           slug: 'fullstack-web-architecture',
           description: 'Master modern web development from database design to server-side rendering. Learn Strapi 5 REST API integration, Next.js App Router, role-based access control, and cloud deployment.',
           coverImageUrl: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=800&auto=format&fit=crop&q=80',
-          owner: instructorUser.id,
+          owner: instructorUser.documentId,
         },
         status: 'published',
       });
@@ -40,7 +41,7 @@ module.exports = async (strapi) => {
           slug: 'ui-ux-design-systems',
           description: 'Craft stunning user interfaces with custom color systems, typography scale, micro-animations, glassmorphism, and responsive layouts that wow users at first glance.',
           coverImageUrl: 'https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?w=800&auto=format&fit=crop&q=80',
-          owner: instructorUser.id,
+          owner: instructorUser.documentId,
         },
         status: 'published',
       });
@@ -54,56 +55,21 @@ module.exports = async (strapi) => {
           slug: 'applied-python-data-science',
           description: 'From data wrangling with Pandas to training machine learning models. Learn data visualization, statistical hypothesis testing, and neural network foundations.',
           coverImageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
-          owner: managerUser.id,
+          owner: managerUser.documentId,
         },
         status: 'published',
       });
     }
 
-    // Ensure Lessons Exist & Partition Correctly by Course
-    const allLessons = await strapi.db.query('api::lesson.lesson').findMany({});
-
-    if (allLessons.length === 0) {
-      // Create lessons if missing
-      await strapi.db.query('api::lesson.lesson').create({
-        data: { title: '01. Introduction to Modern Headless Architecture', order: 1, content: 'Modern web engineering separates presentation from backend data logic.', videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', course: course1.id, publishedAt: new Date() }
-      });
-      await strapi.db.query('api::lesson.lesson').create({
-        data: { title: '02. Relational Schemas & Strapi 5 Permissions', order: 2, content: 'Understand Strapi 5 entity relationships, custom controllers, documentId resolution vs database primary keys.', videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', course: course1.id, publishedAt: new Date() }
-      });
-      await strapi.db.query('api::lesson.lesson').create({
-        data: { title: '03. Crafting Glassmorphic UI with CSS Design Tokens', order: 3, content: 'Build visually stunning user interfaces using modern CSS token systems.', videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', course: course1.id, publishedAt: new Date() }
-      });
-      await strapi.db.query('api::lesson.lesson').create({
-        data: { title: '04. State Persistence & Auto-Graded MCQ Engine', order: 4, content: 'Build an automated quiz grading system that calculates student percentages in real-time.', videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ', course: course1.id, publishedAt: new Date() }
-      });
-
-      await strapi.db.query('api::lesson.lesson').create({
-        data: { title: '01. The Science of Color Systems & Contrast', order: 1, content: 'Explore color psychology, accessible contrast ratios, CSS custom properties, and dark mode tokens.', course: course2.id, publishedAt: new Date() }
-      });
-      await strapi.db.query('api::lesson.lesson').create({
-        data: { title: '02. Typography Scale & Visual Hierarchy', order: 2, content: 'Pair display serif fonts with clean sans-serif body text and monospace metadata.', course: course2.id, publishedAt: new Date() }
-      });
-      await strapi.db.query('api::lesson.lesson').create({
-        data: { title: '03. Micro-Animations & Responsive Design', order: 3, content: 'Add interactive hover states, glassmorphism backdrop blurs, and animated completion stamps.', course: course2.id, publishedAt: new Date() }
-      });
-
-      await strapi.db.query('api::lesson.lesson').create({
-        data: { title: '01. Exploratory Data Analysis with Pandas & Seaborn', order: 1, content: 'Master data cleaning, handling missing values, calculating summary statistics.', course: course3.id, publishedAt: new Date() }
-      });
-      await strapi.db.query('api::lesson.lesson').create({
-        data: { title: '02. Supervised Machine Learning Models', order: 2, content: 'Train decision trees, logistic regression, and random forests using Scikit-Learn.', course: course3.id, publishedAt: new Date() }
-      });
-    } else {
-      // Explicitly partition existing lessons to their matching course IDs
-      for (const l of allLessons) {
-        if (l.title.includes('Headless') || l.title.includes('Relational') || l.title.includes('Glassmorphic') || l.title.includes('Auto-Graded')) {
-          await strapi.db.query('api::lesson.lesson').update({ where: { id: l.id }, data: { course: course1.id } });
-        } else if (l.title.includes('Color Systems') || l.title.includes('Typography') || l.title.includes('Micro-Animations')) {
-          await strapi.db.query('api::lesson.lesson').update({ where: { id: l.id }, data: { course: course2.id } });
-        } else if (l.title.includes('Exploratory Data') || l.title.includes('Supervised Machine')) {
-          await strapi.db.query('api::lesson.lesson').update({ where: { id: l.id }, data: { course: course3.id } });
-        }
+    // Partition existing lessons to their matching course documentIds in Strapi 5
+    const allLessons = await lessonDoc.findMany({});
+    for (const l of allLessons) {
+      if (l.title.includes('Headless') || l.title.includes('Relational') || l.title.includes('Glassmorphic') || l.title.includes('Auto-Graded')) {
+        await lessonDoc.update({ documentId: l.documentId, data: { course: course1.documentId } });
+      } else if (l.title.includes('Color Systems') || l.title.includes('Typography') || l.title.includes('Micro-Animations')) {
+        await lessonDoc.update({ documentId: l.documentId, data: { course: course2.documentId } });
+      } else if (l.title.includes('Exploratory Data') || l.title.includes('Supervised Machine')) {
+        await lessonDoc.update({ documentId: l.documentId, data: { course: course3.documentId } });
       }
     }
 
@@ -154,7 +120,7 @@ module.exports = async (strapi) => {
       });
     }
 
-    strapi.log.info('[seed] Demo courses, partitioned lessons, and quizzes successfully verified and linked!');
+    strapi.log.info('[seed] Demo courses, partitioned lessons, and quizzes successfully verified and linked via Strapi 5 documentId!');
   } catch (err) {
     console.error('[seed] ERROR DETAILS:', err);
   }
