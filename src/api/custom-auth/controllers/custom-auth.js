@@ -1,5 +1,7 @@
 'use strict';
 
+const bcrypt = require('bcryptjs');
+
 const SELF_SERVICE_ROLES = ['student', 'instructor'];
 
 module.exports = {
@@ -18,13 +20,16 @@ module.exports = {
 
       const requestedRole = SELF_SERVICE_ROLES.includes(roleType) ? roleType : 'student';
 
+      const cleanEmail = email.toLowerCase().trim();
+      const cleanUsername = username.trim();
+
       const existingEmail = await strapi.db.query('plugin::users-permissions.user').findOne({
-        where: { email: email.toLowerCase() },
+        where: { email: cleanEmail },
       });
       if (existingEmail) return ctx.badRequest('Email is already taken.');
 
       const existingUsername = await strapi.db.query('plugin::users-permissions.user').findOne({
-        where: { username },
+        where: { username: cleanUsername },
       });
       if (existingUsername) return ctx.badRequest('Username is already taken.');
 
@@ -35,16 +40,20 @@ module.exports = {
         return ctx.badRequest('Required role does not exist on this server.');
       }
 
-      // Use official users-permissions service to create user cleanly
-      const newUser = await strapi.plugin('users-permissions').service('user').add({
-        username,
-        email: email.toLowerCase(),
-        password,
-        fullName: fullName || username,
-        provider: 'local',
-        confirmed: true,
-        blocked: false,
-        role: role.id,
+      // Hash password using bcrypt so /api/auth/local matches perfectly
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const newUser = await strapi.db.query('plugin::users-permissions.user').create({
+        data: {
+          username: cleanUsername,
+          email: cleanEmail,
+          password: hashedPassword,
+          fullName: fullName ? fullName.trim() : cleanUsername,
+          provider: 'local',
+          confirmed: true,
+          blocked: false,
+          role: role.id,
+        },
       });
 
       const userWithRole = await strapi.db.query('plugin::users-permissions.user').findOne({
