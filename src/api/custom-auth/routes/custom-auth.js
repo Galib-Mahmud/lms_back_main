@@ -11,5 +11,14 @@ module.exports = {
         policies: [],
       },
     },
+    {
+      method: 'GET',
+      path: '/custom-auth/me',
+      handler: 'custom-auth.me',
+      config: {
+        auth: false,
+        policies: [],
+      },
+    },
   ],
 };
