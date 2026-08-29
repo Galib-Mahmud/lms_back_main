@@ -3,17 +3,25 @@ const path = require('path');
 module.exports = ({ env }) => {
   const client = env('DATABASE_CLIENT', 'sqlite');
 
-  const postgresConnection = env('DATABASE_URL')
+  // Automatically detect Railway, Render, Heroku or standard PostgreSQL credentials
+  const dbUrl = env('DATABASE_URL') || env('POSTGRES_URL');
+  const dbHost = env('DATABASE_HOST') || env('PGHOST') || env('POSTGRES_HOST') || '127.0.0.1';
+  const dbPort = env.int('DATABASE_PORT', env.int('PGPORT', 5432));
+  const dbName = env('DATABASE_NAME') || env('PGDATABASE') || env('POSTGRES_DATABASE') || 'strapi';
+  const dbUser = env('DATABASE_USERNAME') || env('PGUSER') || env('POSTGRES_USER') || 'strapi';
+  const dbPass = env('DATABASE_PASSWORD') || env('PGPASSWORD') || env('POSTGRES_PASSWORD') || '';
+
+  const postgresConnection = dbUrl
     ? {
-        connectionString: env('DATABASE_URL'),
+        connectionString: dbUrl,
         ssl: env.bool('DATABASE_SSL', true) ? { rejectUnauthorized: false } : false,
       }
     : {
-        host: env('DATABASE_HOST', 'localhost'),
-        port: env.int('DATABASE_PORT', 5432),
-        database: env('DATABASE_NAME', 'strapi'),
-        user: env('DATABASE_USERNAME', 'strapi'),
-        password: env('DATABASE_PASSWORD', 'strapi'),
+        host: dbHost,
+        port: dbPort,
+        database: dbName,
+        user: dbUser,
+        password: dbPass,
         ssl: env.bool('DATABASE_SSL', false) ? { rejectUnauthorized: false } : false,
         schema: env('DATABASE_SCHEMA', 'public'),
       };
