@@ -179,7 +179,30 @@ const sanitizeQuiz = (quiz) => {
   return clone;
 };
 
-module.exports = createCoreController('api::quiz.quiz', ({ strapi }) => ({
+  async find(ctx) {
+    const user = ctx.state.user;
+    if (!user) return ctx.unauthorized('You must be logged in.');
+
+    const { filters } = ctx.query || {};
+    let courseNumericId = null;
+
+    if (filters && filters.course && filters.course.id) {
+      courseNumericId = Number(filters.course.id);
+    }
+
+    if (courseNumericId) {
+      const quizzes = await strapi.db.query('api::quiz.quiz').findMany({
+        where: { course: courseNumericId },
+      });
+
+      const privileged = user.role?.type && ['admin', 'content_manager', 'instructor'].includes(user.role.type);
+      const sanitized = quizzes.map((q) => (privileged ? q : sanitizeQuiz(q)));
+      return { data: sanitized };
+    }
+
+    return super.find(ctx);
+  },
+
   async create(ctx) {
     const user = ctx.state.user;
     // The frontend sends the parent course's documentId as the relation value.
