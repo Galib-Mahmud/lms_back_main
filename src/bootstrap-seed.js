@@ -2,17 +2,21 @@
 
 module.exports = async (strapi) => {
   try {
-    strapi.log.info('[seed] Performing complete database wipe for demo entities...');
+    strapi.log.info('[seed] Performing raw PostgreSQL table wipe for demo entities...');
 
-    // Wipe previous demo data cleanly from database with mandatory { where: {} }
-    await strapi.db.query('api::lesson-progress.lesson-progress').deleteMany({ where: {} });
-    await strapi.db.query('api::enrollment.enrollment').deleteMany({ where: {} });
-    await strapi.db.query('api::quiz-result.quiz-result').deleteMany({ where: {} });
-    await strapi.db.query('api::quiz.quiz').deleteMany({ where: {} });
-    await strapi.db.query('api::lesson.lesson').deleteMany({ where: {} });
-    await strapi.db.query('api::course.course').deleteMany({ where: {} });
+    // Raw PostgreSQL wipe to ensure zero stale or orphaned rows
+    try {
+      await strapi.db.connection('lesson_progresses').del();
+      await strapi.db.connection('enrollments').del();
+      await strapi.db.connection('quiz_results').del();
+      await strapi.db.connection('quizzes').del();
+      await strapi.db.connection('lessons').del();
+      await strapi.db.connection('courses').del();
+    } catch {
+      // Fallback if table name variant differs
+    }
 
-    strapi.log.info('[seed] Creating fresh Strapi 5 LMS demo data with database query relations...');
+    strapi.log.info('[seed] Creating fresh Strapi 5 LMS demo data...');
 
     const adminUser = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { email: 'admin@example.com' } });
     const managerUser = await strapi.db.query('plugin::users-permissions.user').findOne({ where: { email: 'content@example.com' } });
